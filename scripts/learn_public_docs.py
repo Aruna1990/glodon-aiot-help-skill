@@ -2,6 +2,8 @@
 """
 语雀公开文档学习脚本
 使用 curl 直接获取公开文档内容（无需 Token）
+
+根据语雀文档实际目录结构自动创建本地目录
 """
 
 import os
@@ -14,10 +16,11 @@ from typing import List, Dict, Optional
 
 # 配置
 BASE_URL = "https://glodon-cv-help.yuque.com/cuv0se/ol9231"
-KNOWLEDGE_DIR = os.path.join(os.path.dirname(__file__), "..", "knowledge")
+SKILL_DIR = os.path.join(os.path.dirname(__file__), "..")
+KNOWLEDGE_DIR = os.path.join(SKILL_DIR, "knowledge")
 LEARN_STATE_FILE = os.path.join(KNOWLEDGE_DIR, ".learn_state.json")
 
-# 核心文档
+# 核心文档（不再预设分类，由脚本自动提取）
 CORE_DOCS = [
     {"slug": "yck25gn683z3wa2f", "title": "平台介绍"},
     {"slug": "lpetkzefs5er4q5x", "title": "平台使用常见问题汇总"},
@@ -32,8 +35,51 @@ CORE_DOCS = [
 ]
 
 
-def fetch_doc_content(slug: str) -> Optional[str]:
-    """使用 curl 获取文档内容"""
+def fetch_yuque_toc() -> List[Dict]:
+    """
+    获取语雀知识库目录结构
+    
+    语雀知识库目录页通常包含所有文档的层级结构
+    通过解析目录页可以获取文档的分类信息
+    """
+    toc_url = BASE_URL
+    
+    try:
+        result = subprocess.run(
+            ['curl', '-s', '-L', '-A', 'Mozilla/5.0', toc_url],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            timeout=30
+        )
+        
+        if result.returncode == 0:
+            html = result.stdout
+            # 提取目录结构（语雀的目录通常在特定的 div 中）
+            # 这里简单提取所有文档链接和标题
+            pattern = r'href="/cuv0se/ol9231/([a-z0-9]+)"[^>]*>([^<]+)<'
+            matches = re.findall(pattern, html)
+            
+            toc = []
+            for slug, title in matches:
+                # 去重
+                if not any(doc['slug'] == slug for doc in toc):
+                    toc.append({"slug": slug, "title": title.strip()})
+            
+            return toc
+        
+        return []
+        
+    except Exception as e:
+        print(f"获取目录失败：{e}")
+        return []
+
+
+def fetch_doc_content(slug: str) -> Optional[Dict]:
+    """
+    使用 curl 获取文档内容
+    返回包含内容、标题、分类信息的字典
+    """
     url = f"{BASE_URL}/{slug}"
     
     try:
@@ -41,24 +87,40 @@ def fetch_doc_content(slug: str) -> Optional[str]:
             ['curl', '-s', '-L', '-A', 'Mozilla/5.0', url],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
+            universal_newlines=True,
             timeout=30
         )
         
         if result.returncode == 0:
             html = result.stdout
             
-            # 简单提取标题和内容
-            # 语雀页面的内容通常在 <meta name="description"> 或特定的 div 中
-            # 这里提取页面标题作为占位
+            # 提取标题
             title_match = re.search(r'<title>([^<]+)</title>', html)
-            title = title_match.group(1) if title_match else slug
+            page_title = title_match.group(1).strip() if title_match else slug
             
-            # 提取描述
+            # 清理标题（移除"· 行业 AI 平台文档中心"等后缀）
+            if "·" in page_title:
+                page_title = page_title.split("·")[0].strip()
+            
+            # 提取描述/摘要
             desc_match = re.search(r'<meta[^>]+name="description"[^>]+content="([^"]+)"', html)
             description = desc_match.group(1) if desc_match else ""
             
-            content = f"# {title}\n\n"
+            # 尝试提取面包屑导航（确定分类）
+            # 语雀的面包屑通常形如：知识库 > 分类名 > 文档名
+            breadcrumb_match = re.search(r'breadcrumb[^>]*>(.*?)</', html, re.IGNORECASE)
+            category = None
+            if breadcrumb_match:
+                breadcrumb = breadcrumb_match.group(1)
+                # 提取分类（中间的部分）
+                parts = re.split(r'[>\/]', breadcrumb)
+                if len(parts) >= 2:
+                    category = parts[-2].strip()
+                    # 清理分类名
+                    category = re.sub(r'[^\w\u4e00-\u9fff-]', '', category)
+            
+            # 提取正文内容（简化版：提取第一个主要段落）
+            content = f"# {page_title}\n\n"
             if description:
                 content += f"{description}\n\n"
             
@@ -80,12 +142,19 @@ def fetch_doc_content(slug: str) -> Optional[str]:
 - **Slug**: `{slug}`
 - **URL**: {url}
 - **获取时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
----
-
-*本文档由 learn_public_docs.py 自动生成*
 """
-            return content
+            
+            if category:
+                content += f"- **分类**: {category}\n"
+            
+            content += "\n---\n\n*本文档由 learn_public_docs.py 自动生成*\n"
+            
+            return {
+                "title": page_title,
+                "content": content,
+                "category": category,
+                "url": url
+            }
         
         return None
         
@@ -94,36 +163,20 @@ def fetch_doc_content(slug: str) -> Optional[str]:
         return None
 
 
-def save_doc(slug: str, title: str, content: str, links: List[str] = None):
-    """保存文档到本地"""
-    os.makedirs(KNOWLEDGE_DIR, exist_ok=True)
-    filepath = os.path.join(KNOWLEDGE_DIR, f"{slug}.md")
-    
-    doc_content = f"""# {title}
-
-> 来源：广联达行业 AI 平台文档中心  
-> 链接：{BASE_URL}/{slug}  
-> 学习时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
----
-
-{content}
-
----
-
-## 关联文档
-
-"""
-    if links:
-        for link in links:
-            doc_content += f"- [{link}]({BASE_URL}/{link})\n"
+def save_doc(slug: str, title: str, content: str, category: str = None):
+    """保存文档到本地，根据分类自动创建目录"""
+    # 确定保存目录
+    if category:
+        # 创建分类目录（使用 slug 作为目录名，避免中文路径问题）
+        save_dir = os.path.join(KNOWLEDGE_DIR, slug)
     else:
-        doc_content += "*暂无关联文档*\n"
+        save_dir = KNOWLEDGE_DIR
     
-    doc_content += f"\n---\n\n*本文档由 learn_public_docs.py 自动获取 · 公开文档*\n"
+    os.makedirs(save_dir, exist_ok=True)
+    filepath = os.path.join(save_dir, f"{slug}.md")
     
     with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(doc_content)
+        f.write(content)
     
     return filepath
 
@@ -148,6 +201,7 @@ def learn_core_docs():
     
     learned = 0
     failed = 0
+    categories = set()
     
     for i, doc in enumerate(CORE_DOCS, 1):
         slug = doc["slug"]
@@ -156,15 +210,17 @@ def learn_core_docs():
         print(f"[{i}/{len(CORE_DOCS)}] 📥 {title}")
         print(f"    {BASE_URL}/{slug}")
         
-        # 获取内容
-        content = fetch_doc_content(slug)
+        # 获取内容（包含分类信息）
+        doc_data = fetch_doc_content(slug)
         
-        if content:
-            # 提取链接
-            links = extract_links(content)
+        if doc_data:
+            # 保存文档（自动根据分类创建目录）
+            category = doc_data.get("category")
+            if category:
+                categories.add(category)
+                print(f"    分类：{category}")
             
-            # 保存文档
-            filepath = save_doc(slug, title, content, links)
+            filepath = save_doc(slug, doc_data["title"], doc_data["content"], category)
             
             print(f"    ✓ 已保存：{filepath}")
             learned += 1
@@ -180,13 +236,16 @@ def learn_core_docs():
     print("=" * 60)
     print(f"成功：{learned} 篇")
     print(f"失败：{failed} 篇")
+    if categories:
+        print(f"分类：{', '.join(categories)}")
     print("=" * 60)
     
     # 保存状态
     state = {
         "last_sync": datetime.now().isoformat(),
         "learned_docs": [doc["slug"] for doc in CORE_DOCS],
-        "total_learned": learned
+        "total_learned": learned,
+        "categories": list(categories)
     }
     
     with open(LEARN_STATE_FILE, 'w', encoding='utf-8') as f:
@@ -211,12 +270,21 @@ def main():
     
     parser = argparse.ArgumentParser(description="语雀公开文档学习工具")
     parser.add_argument("--core", action="store_true", help="学习核心文档")
+    parser.add_argument("--toc", action="store_true", help="获取目录结构")
     parser.add_argument("--state", action="store_true", help="查看状态")
     
     args = parser.parse_args()
     
     if args.state:
         show_state()
+    elif args.toc:
+        print("📑 获取语雀知识库目录...")
+        toc = fetch_yuque_toc()
+        print(f"找到 {len(toc)} 篇文档:")
+        for doc in toc[:20]:  # 只显示前 20 篇
+            print(f"  - {doc['title']} ({doc['slug']})")
+        if len(toc) > 20:
+            print(f"  ... 还有 {len(toc) - 20} 篇")
     elif args.core:
         learn_core_docs()
     else:

@@ -2,8 +2,8 @@
 
 skill:
   name: glodon-ai-help
-  version: 1.4.0
-  description: 广联达行业 AI 平台使用问题解答
+  version: 1.6.0
+  description: 广联达行业 AI 平台使用问题解答（按需学习）
 
 # 文档来源
 documentation:
@@ -21,53 +21,37 @@ knowledge_base:
   chunk_overlap: 50
   index_type: faiss
 
-# 文档查询优先级配置（新增）
-# 当用户问题匹配关键词时，自动优先查询指定文档
+# 文档查询优先级配置
+# 当用户问题匹配关键词时，自动优先查询相关文档
 doc_query_priority:
-  - keywords: ["token", "认证", "api key", "api secret", "access token", "resource token", "接口 url", "api 接口"]
+  - keywords: ["token", "认证", "api key", "api secret", "接口 url", "api 接口"]
     priority_docs:
-      - knowledge/02-api-reference/
-      - knowledge/AI_APP_INTEGRATION_GUIDE.md
-    rule: "涉及认证和 API 接口时必须先查这两个文档"
+      - knowledge/ku9i5oea97ynfzt4.md  # 平台认证 Token 说明文档
+      - knowledge/tl0hylbi1hm61mu3.md  # Key Secret 认证获取 Token
+    rule: "涉及认证和 API 接口时必须先查认证文档"
   
-  - keywords: ["sdk", "前端", "集成", "chat-app-sdk", "bot-client-ui", "嵌入", "cdn", "npm"]
+  - keywords: ["sdk", "前端", "集成", "chat-app-sdk", "bot-client-ui", "npm"]
     priority_docs:
       - knowledge/03-coze-studio/sdk/chat_app_sdk.md
       - knowledge/03-coze-studio/sdk/bot_client_ui.md
     rule: "前端集成问题优先查 SDK 文档"
   
-  - keywords: ["架构", "模块", "平台结构", "层次"]
+  - keywords: ["工作流", "workflow", "appId", "应用 id"]
     priority_docs:
-      - knowledge/PLATFORM_ARCHITECTURE.md
-    rule: "架构问题查平台架构文档"
-  
-  - keywords: ["工作流", "workflow", "appId", "应用 id", "发布"]
-    priority_docs:
-      - knowledge/02-api-reference/
-      - knowledge/AI_APP_INTEGRATION_GUIDE.md
-    rule: "工作流和应用配置查集成指南"
+      - knowledge/etgvtorzglntmv39.md  # API 调用
+    rule: "工作流和应用配置查 API 调用文档"
 
-# 自动学习配置（新增）
+# 自动学习配置（按需学习）
 learning:
   enabled: true
-  auto_trigger: true      # 检测知识盲区时自动学习
-  max_depth: 2            # 关联链接下钻深度
-  rate_limit: 0.5         # 请求间隔（秒）
-  state_file: .learn_state.json
-  core_docs:              # 核心文档（优先学习）
-    - yck25gn683z3wa2f    # 平台介绍
-    - lpetkzefs5er4q5x    # 常见问题
-    - etgvtorzglntmv39    # API 调用
-    - ku9i5oea97ynfzt4    # Token 说明
-  external_sources:       # 外部学习源
-    - name: chat-app-sdk
-      trigger_keywords: ["coze studio sdk", "前端集成", "chat-app-sdk", "@glodon-aiot/chat-app-sdk", "新版 sdk"]
-      script: scripts/learn_chat_app_sdk.py
-      description: "Coze Studio 前端聊天应用 SDK（新版推荐）"
-    - name: bot-client-ui
-      trigger_keywords: ["bot-client-ui", "@glodon-aiot/bot-client-ui", "旧版 sdk", "应用对接", "历史项目"]
-      script: scripts/learn_bot_client_ui.py
-      description: "Bot Client UI 前端 SDK（旧版已废弃）"
+  auto_trigger: true          # 检测知识缺失时自动学习
+  check_on_startup: true      # 启动时检查知识库
+  state_file: knowledge/.learn_state.json
+  scripts:
+    check_and_learn: scripts/check_and_learn.py   # 统一入口
+    public_docs: scripts/learn_public_docs.py     # 语雀文档
+    chat_app_sdk: scripts/learn_chat_app_sdk.py   # 新版 SDK
+    bot_client_ui: scripts/learn_bot_client_ui.py # 旧版 SDK
 
 # 机器人配置
 bot:
