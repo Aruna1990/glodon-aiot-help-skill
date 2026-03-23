@@ -194,8 +194,13 @@ const bot = new BotClientUI({{ container: el, botId: 'xxx', token: 'xxx' }});
 
 新代码:
 ```javascript
-import {{ ChatApp }} from '@glodon-aiot/chat-app-sdk';
-const chat = new ChatApp({{ appId: 'xxx', container: el }});
+import {{ WebChatClient }} from '@glodon-aiot/chat-app-sdk';
+const client = new WebChatClient({{
+  mode: 'embed',
+  getContainer: () => el,
+  config: {{ type: 'app', appInfo: {{ appId: 'xxx', workflowId: 'xxx' }} }},
+  auth: {{ type: 'token', token: 'your-token' }}
+}});
 ```
 
 **3. 更新配置**

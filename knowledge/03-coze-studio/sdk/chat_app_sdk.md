@@ -1,6 +1,6 @@
 # @glodon-aiot/chat-app-sdk 文档
 
-> **版本**: 0.0.30 | **最后更新**: 2026-03-20 | **来源**: NPM Registry + 广联达官方文档
+> **版本**: 0.0.30 | **最后更新**: 2026-03-23 | **来源**: NPM 包 README（与 npm 官网完全一致）
 
 ---
 
@@ -13,275 +13,517 @@
 | **描述** | Glodon AIoT Chat App SDK |
 | **许可证** | MIT |
 | **首页** | https://copilot.glodon.com/ |
-| **关键词** | N/A |
+| **NPM 地址** | https://www.npmjs.com/package/@glodon-aiot/chat-app-sdk |
 
 ---
 
-## 🚀 快速开始
+# @glodon-aiot/chat-app-sdk
 
-### 1. 安装
+Glodon AIoT Chat App SDK - 基于广联达行业AI平台的智能聊天 SDK，支持浮窗和嵌入两种模式，提供完整的 TypeScript 类型定义和 Web Components 支持。
+
+[![npm version](https://img.shields.io/npm/v/@glodon-aiot/chat-app-sdk.svg)](https://www.npmjs.com/package/@glodon-aiot/chat-app-sdk)
+[![npm downloads](https://img.shields.io/npm/dm/@glodon-aiot/chat-app-sdk.svg)](https://www.npmjs.com/package/@glodon-aiot/chat-app-sdk)
+[![License](https://img.shields.io/npm/l/@glodon-aiot/chat-app-sdk.svg)](https://github.com/glodon-aiot/chat-app-sdk/blob/main/LICENSE)
+
+## 📚 在线示例
+
+**🎯 [查看完整示例和演示](https://glodon-aiot.github.io/chat-app-sdk-demo/live/#/demo)**
+
+示例项目展示了以下功能：
+- ✅ Web Components 集成
+- ✅ 自定义 JsonItem 组件
+- ✅ 自定义 ContentBox 组件
+- ✅ 搜索结果展示
+- ✅ 知识库引用展示
+- ✅ 联网搜索开关
+- ✅ Bot 和 App 两种模式
+
+## ✨ 特性
+
+- 🎯 **多模式支持**：浮窗模式和嵌入模式自由切换
+- 📦 **多种引入方式**：支持 npm 安装和 CDN 引入
+- 🔷 **Web Components**：支持自定义 Web Components 扩展
+- 📘 **类型安全**：完整的 TypeScript 类型定义
+- ⚛️ **React 友好**：完美支持 React 项目集成
+- 📱 **移动端适配**：自动检测设备类型并适配布局
+- 🎨 **高度可定制**：丰富的 UI 配置选项
+- 🔄 **Token 自动刷新**：支持 Token 过期自动刷新
+
+## 📦 安装
+
+### NPM 安装
 
 ```bash
+# 使用 npm
 npm install @glodon-aiot/chat-app-sdk
 
-# 或使用 yarn
-yarn add @glodon-aiot/chat-app-sdk
-
-# 或使用 pnpm
+# 使用 pnpm
 pnpm add @glodon-aiot/chat-app-sdk
+
+# 使用 yarn
+yarn add @glodon-aiot/chat-app-sdk
 ```
 
-### 2. 基础使用
+### CDN 引入
+
+```html
+<!-- 最新版本 -->
+<script src="https://unpkg.com/@glodon-aiot/chat-app-sdk@latest/libs/cn/index.js"></script>
+
+<!-- 指定版本 -->
+<script src="https://unpkg.com/@glodon-aiot/chat-app-sdk@0.0.1-alpha.19/libs/cn/index.js"></script>
+
+<!-- 或使用 jsDelivr -->
+<script src="https://cdn.jsdelivr.net/npm/@glodon-aiot/chat-app-sdk@latest/libs/cn/index.js"></script>
+```
+
+## 🚀 快速开始
+
+### 基础用法（NPM）
 
 ```typescript
-import { ChatApp } from '@glodon-aiot/chat-app-sdk';
+import { WebChatClient } from '@glodon-aiot/chat-app-sdk';
 
-// 创建聊天应用实例
-const chat = new ChatApp({
-  appId: 'YOUR_APP_ID',  // 从 Coze Studio 获取
-  container: document.getElementById('chat-container'),
-  theme: {
-    primaryColor: '#1677ff',
-    backgroundColor: '#ffffff'
-  },
+// 创建聊天客户端实例
+const client = new WebChatClient({
+  mode: 'float', // 'float' 浮窗模式 | 'embed' 嵌入模式
+
   config: {
-    showHistory: true,      // 显示消息历史
-    enableFileUpload: true, // 启用文件上传
-    enableVoice: false,     // 启用语音（可选）
-    placeholder: '输入消息...' // 输入框占位符
-  }
+    type: 'app',
+    appInfo: {
+      appId: 'your-app-id',
+      workflowId: 'your-workflow-id',
+      draft_mode: false, // 是否使用草稿模式
+    },
+    apiUrl: 'https://your-api-domain.com/api', // 可选：自定义 API 地址
+  },
+
+  auth: {
+    type: 'token',
+    token: 'your-token',
+    onRefreshToken: async () => {
+      // Token 刷新逻辑
+      const response = await fetch('/api/refresh-token');
+      const { token } = await response.json();
+      return token;
+    },
+  },
+
+  ui: {
+    base: {
+      layout: 'pc', // 'pc' | 'mobile'
+      lang: 'zh-CN', // 'zh-CN' | 'en-US'
+    },
+    chatBot: {
+      title: '智能助手',
+      uploadable: true,
+      width: 400,
+    },
+  },
 });
 
-// 初始化
-chat.init();
+// 显示聊天窗口
+client.showChatBot();
 
-// 可选：监听事件
-chat.on('message', (msg) => {
-  console.log('收到消息:', msg);
-});
+// 隐藏聊天窗口
+client.hideChatBot();
 
-chat.on('error', (err) => {
-  console.error('错误:', err);
-});
+// 销毁实例
+client.destroy();
 ```
 
-### 3. HTML 示例
+### React 集成
+
+```tsx
+import React, { useEffect, useRef } from 'react';
+import { WebChatClient } from '@glodon-aiot/chat-app-sdk';
+
+function ChatComponent() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const clientRef = useRef<WebChatClient | null>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    clientRef.current = new WebChatClient({
+      mode: 'embed',
+      getContainer: () => containerRef.current!,
+      config: {
+        type: 'app',
+        appInfo: {
+          appId: 'your-app-id',
+          workflowId: 'your-workflow-id',
+        },
+      },
+      auth: {
+        type: 'token',
+        token: 'your-token',
+        onRefreshToken: async () => {
+          // 刷新 token 逻辑
+          return 'new-token';
+        },
+      },
+    });
+
+    return () => {
+      clientRef.current?.destroy();
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100vh' }}
+    />
+  );
+}
+```
+
+### CDN 使用
 
 ```html
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coze Studio 聊天集成</title>
-  <style>
-    #chat-container {
-      width: 400px;
-      height: 600px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-    }
-  </style>
+  <title>Glodon AIoT Chat SDK</title>
 </head>
 <body>
-  <div id="chat-container"></div>
-  
-  <script type="module">
-    import { ChatApp } from '@glodon-aiot/chat-app-sdk';
-    
-    const chat = new ChatApp({
-      appId: 'YOUR_APP_ID',
-      container: document.getElementById('chat-container')
+  <div id="chat-container" style="width: 100%; height: 100vh;"></div>
+
+  <!-- 引入 SDK -->
+  <script src="https://unpkg.com/@glodon-aiot/chat-app-sdk@latest/libs/cn/index.js"></script>
+
+  <script>
+    // 使用全局变量 GlodonAIoT
+    const client = new window.GlodonAIoT.WebChatClient({
+      mode: 'embed',
+      getContainer: () => document.getElementById('chat-container'),
+      config: {
+        type: 'app',
+        appInfo: {
+          appId: 'your-app-id',
+          workflowId: 'your-workflow-id',
+        },
+      },
+      auth: {
+        type: 'token',
+        token: 'your-token',
+        onRefreshToken: function() {
+          return 'your-new-token';
+        },
+      },
     });
-    
-    chat.init();
   </script>
 </body>
 </html>
 ```
 
----
+## 🎯 两种模式
 
-## ⚙️ 配置选项
+### 浮窗模式（Float）
 
-### ChatApp 构造函数参数
+显示悬浮按钮，点击后弹出聊天窗口。适合作为页面辅助功能。
+
+```typescript
+const client = new WebChatClient({
+  mode: 'float', // 浮窗模式
+  config: {
+    type: 'app',
+    appInfo: {
+      appId: 'your-app-id',
+      workflowId: 'your-workflow-id',
+    },
+  },
+  auth: {
+    type: 'token',
+    token: 'your-token',
+  },
+});
+```
+
+### 嵌入模式（Embed）
+
+全屏展示聊天页面，自动打开。适合专门的聊天页面。
+
+```typescript
+const client = new WebChatClient({
+  mode: 'embed',
+  getContainer: () => document.getElementById('chat-container'),
+  config: {
+    type: 'app',
+    appInfo: {
+      appId: 'your-app-id',
+      workflowId: 'your-workflow-id',
+    },
+  },
+  auth: {
+    type: 'token',
+    token: 'your-token',
+  },
+});
+```
+
+## 🔷 Web Components 支持
+
+SDK 支持通过 Web Components 自定义组件，实现更灵活的 UI 扩展。
+
+### 注册自定义组件
+
+```typescript
+import { WebChatClient } from '@glodon-aiot/chat-app-sdk';
+
+// 注册自定义 Web Components
+customElements.define('custom-json-item', CustomJsonItem);
+customElements.define('custom-content-box', CustomContentBox);
+
+const client = new WebChatClient({
+  // ... 配置
+  ui: {
+    uiKitCustomWebComponents: {
+      JsonItem: 'custom-json-item', // 使用自定义 JsonItem
+    },
+    contentBoxWebComponent: 'custom-content-box', // 使用自定义 ContentBox
+  },
+});
+```
+
+### 示例组件
+
+查看 [在线示例](https://glodon-aiot.github.io/chat-app-sdk-demo/live/#/demo) 了解以下组件的实现：
+
+- `knowledge-reference-list` - 知识库引用列表组件
+- `search-result-list` - 搜索结果列表组件
+- `demo-json-item` - 自定义 JsonItem 组件
+- `demo-content-box` - 自定义 ContentBox 组件
+
+## 📖 API 文档
+
+### WebChatClient 构造函数
+
+```typescript
+new WebChatClient(options: WebChatOptions)
+```
+
+### WebChatOptions
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| `appId` | string | ✅ | Coze Studio 应用 ID |
-| `container` | HTMLElement | ✅ | 聊天容器 DOM 元素 |
-| `theme` | ThemeConfig | ❌ | 主题配置 |
-| `config` | AppConfig | ❌ | 应用配置 |
-| `token` | string | ❌ | 访问 Token（可选，默认从 appId 生成） |
+| `mode` | `'float' \| 'embed'` | 是 | 渲染模式 |
+| `config` | `BotConfig` | 是 | Bot 配置信息 |
+| `auth` | `AuthConfig` | 是 | 认证配置 |
+| `ui` | `UIConfig` | 否 | UI 配置 |
+| `getContainer` | `() => HTMLElement` | 否 | 容器元素（embed 模式必需） |
+| `env` | `'test' \| 'prod'` | 否 | 环境配置 |
+| `apiUrl` | `string` | 否 | 自定义 API 地址 |
 
-### ThemeConfig 主题配置
-
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `primaryColor` | string | '#1677ff' | 主色调 |
-| `backgroundColor` | string | '#ffffff' | 背景色 |
-| `headerColor` | string | '#1677ff' | 头部背景色 |
-| `textColor` | string | '#333333' | 文字颜色 |
-
-### AppConfig 应用配置
-
-| 属性 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| `showHistory` | boolean | true | 显示历史消息 |
-| `enableFileUpload` | boolean | true | 启用文件上传 |
-| `enableVoice` | boolean | false | 启用语音输入 |
-| `placeholder` | string | '输入消息...' | 输入框占位符 |
-| `maxHistoryLength` | number | 50 | 最大历史消息数 |
-| `welcomeMessage` | string | 可选 | 欢迎消息 |
-
----
-
-## 📡 API 方法
-
-### 实例方法
-
-#### `init()`
-初始化聊天应用，必须在调用其他方法前执行。
+### BotConfig
 
 ```typescript
-chat.init();
+{
+  type: 'app',
+  appInfo: {                  // 必填
+    appId: string,             // 应用 ID
+    workflowId: string,        // 工作流 ID
+    draft_mode?: boolean,      // 是否使用草稿模式
+    parameters?: Record<string, unknown>, // 工作流参数
+  },
+  apiUrl?: string,             // 可选：自定义 API 地址
+}
 ```
 
-#### `destroy()`
-销毁聊天应用，清理资源和事件监听器。
+### AuthConfig
 
 ```typescript
-chat.destroy();
+{
+  type: 'token',                              // 认证类型
+  token: string,                              // 访问令牌
+  onRefreshToken?: () => string | Promise<string>, // Token 刷新回调
+}
 ```
 
-#### `sendMessage(text: string)`
-主动发送消息。
+### UIConfig
 
 ```typescript
-chat.sendMessage('你好，有什么可以帮助的？');
+{
+  base?: {
+    layout?: 'pc' | 'mobile',   // 布局模式
+    lang?: string,               // 语言设置
+    zIndex?: number,             // z-index 层级
+    icon?: string,               // 自定义图标
+  },
+  chatBot?: {
+    title?: string,              // 聊天窗口标题
+    uploadable?: boolean,        // 是否支持上传
+    width?: number,              // 窗口宽度
+    isNeedClearContext?: boolean, // 是否需要清除上下文
+    isNeedClearMessage?: boolean, // 是否需要清除消息
+    isNeedAddNewConversation?: boolean, // 是否需要新建会话
+    isNeedFunctionCallMessage?: boolean, // 是否需要函数调用消息
+  },
+  header?: {
+    isShow?: boolean,            // 是否显示头部
+    isNeedClose?: boolean,       // 是否显示关闭按钮
+  },
+  asstBtn?: {
+    isNeed?: boolean,            // 是否显示浮动按钮
+  },
+  conversations?: {
+    isNeed?: boolean,            // 是否需要会话列表
+  },
+  input?: {
+    placeholder?: string,        // 输入框占位符
+    isShow?: boolean,           // 是否显示输入框
+    defaultText?: string,       // 默认文本
+    renderChatInputRightActions?: () => ReactNode, // 自定义右侧操作按钮
+  },
+  uiKitCustomWebComponents?: {
+    JsonItem?: string,          // 自定义 JsonItem 组件名称
+  },
+  contentBoxWebComponent?: string, // 自定义 ContentBox 组件名称
+  getMessageRenderIndex?: (message: unknown) => number, // 自定义消息渲染索引
+}
 ```
 
-#### `clearHistory()`
-清空聊天历史。
+### WebChatClient 实例方法
 
-```typescript
-chat.clearHistory();
-```
+| 方法 | 说明 | 返回值 |
+|------|------|--------|
+| `showChatBot()` | 显示聊天窗口 | `void` |
+| `hideChatBot()` | 隐藏聊天窗口 | `void` |
+| `destroy()` | 销毁实例，清理资源 | `void` |
 
-#### `setTheme(theme: ThemeConfig)`
-动态修改主题。
+### WebChatClient 实例属性
 
-```typescript
-chat.setTheme({ primaryColor: '#ff6600' });
-```
-
-#### `show()` / `hide()`
-显示/隐藏聊天窗口。
-
-```typescript
-chat.show();
-chat.hide();
-```
-
-#### `toggle()`
-切换显示状态。
-
-```typescript
-chat.toggle();
-```
-
----
-
-## 🎯 事件监听
-
-### 可用事件
-
-| 事件名 | 回调参数 | 说明 |
-|--------|----------|------|
-| `message` | `Message` | 收到新消息 |
-| `error` | `Error` | 发生错误 |
-| `ready` | `void` | 初始化完成 |
-| `destroy` | `void` | 销毁完成 |
-| `file-upload` | `File` | 文件上传开始 |
-| `file-success` | `FileResult` | 文件上传成功 |
-| `file-error` | `Error` | 文件上传失败 |
-
-### 使用示例
-
-```typescript
-// 监听消息
-chat.on('message', (msg) => {
-  console.log('消息类型:', msg.type);
-  console.log('消息内容:', msg.content);
-});
-
-// 监听错误
-chat.on('error', (err) => {
-  console.error('聊天错误:', err.message);
-});
-
-// 监听就绪
-chat.on('ready', () => {
-  console.log('聊天应用已就绪');
-});
-
-// 移除监听
-chat.off('message', callback);
-
-// 一次性监听
-chat.once('ready', () => {
-  console.log('只触发一次');
-});
-```
-
----
+| 属性 | 类型 | 说明 |
+|------|------|------|
+| `chatClientId` | `string` | 客户端唯一 ID |
+| `options` | `WebChatOptions` | 配置选项 |
+| `senderName` | `string` | 发送者名称 |
+| `apiUrl` | `string` | API 地址 |
 
 ## 🔧 常见问题
 
-### 1. 如何获取 appId？
+### Q1: 如何获取 appId 和 workflowId？
 
-1. 登录广联达行业 AI 平台：https://copilot.glodon.com/
-2. 进入 Coze Studio
-3. 创建或选择应用
-4. 在应用设置中找到 **App ID**
+需要从广联达行业AI平台获取：
+1. 登录 [广联达行业AI平台](https://copilot.glodon.com/)
+2. 从“产品中心”选择“行业AI平台”
+3. 左侧menu中点击“Coze Studio -> 项目开发”
+2. 创建或选择你的应用
+3. 在应用"发布状态"中找到相应的 ID
 
-### 2. Token 认证失败？
+### Q2: CDN 引入后如何使用？
 
-- 检查 appId 是否正确
-- 确认应用已发布
-- 检查网络请求是否被 CORS 阻止
-- 联系平台管理员确认权限
+SDK 会在 `window.GlodonAIoT` 上暴露 API：
 
-### 3. 样式不生效？
+```javascript
+const client = new window.GlodonAIoT.WebChatClient({
+  // 配置...
+});
+```
 
-- 确保容器有明确宽高
-- 检查 CSS 优先级
-- 使用 `!important` 覆盖默认样式（不推荐）
-- 通过 `theme` 参数配置
+### Q3: 支持哪些浏览器？
 
-### 4. 文件上传失败？
+支持所有现代浏览器：
+- Chrome >= 88
+- Firefox >= 85
+- Safari >= 14
+- Edge >= 88
 
-- 检查 `enableFileUpload` 是否为 `true`
-- 确认文件大小限制（默认 10MB）
-- 检查支持的文件类型
+### Q4: 如何处理 Token 过期？
+
+通过 `onRefreshToken` 回调处理：
+
+```typescript
+auth: {
+  type: 'token',
+  token: 'current-token',
+  onRefreshToken: async () => {
+    // 调用你的 API 获取新 token
+    const response = await fetch('/api/refresh-token');
+    const { token } = await response.json();
+    return token;
+  },
+}
+```
+
+### Q5: 如何在嵌入模式下设置容器高度？
+
+容器会自动填满 100% 高度，确保父元素有明确的高度：
+
+```html
+<div id="chat-container" style="height: 100vh;"></div>
+```
+
+### Q6: 如何自定义 Web Components？
+
+参考 [在线示例](https://glodon-aiot.github.io/chat-app-sdk-demo/live/#/demo) 中的实现，注册自定义组件并在配置中指定：
+
+```typescript
+// 注册组件
+customElements.define('my-json-item', MyJsonItem);
+
+// 在配置中使用
+ui: {
+  uiKitCustomWebComponents: {
+    JsonItem: 'my-json-item',
+  },
+}
+```
+
+### Q7: 如何切换 Bot 和 App 模式？
+
+通过 `config.type` 字段切换：
+
+```typescript
+// Bot 模式
+config: {
+  type: 'bot',
+  botId: 'your-bot-id',
+}
+
+// App 模式
+config: {
+  type: 'app',
+  appInfo: {
+    appId: 'your-app-id',
+    workflowId: 'your-workflow-id',
+  },
+}
+```
+
+## 🌐 环境要求
+
+- **Node.js**: >= 18
+- **React**: >= 18.2.0 (如果使用 React)
+- **ReactDOM**: >= 18.2.0 (如果使用 React)
+- **浏览器**: 支持 ES6+ 的现代浏览器
+
+## 📄 许可证
+
+Apache-2.0
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+## 📞 联系我们
+
+如有问题或建议，请联系 Glodon AIoT 团队。
+
+## 🔗 相关链接
+
+- 📚 [在线示例和演示](https://glodon-aiot.github.io/chat-app-sdk-demo/live/#/demo)
+- 📦 [npm 包地址](https://www.npmjs.com/package/@glodon-aiot/chat-app-sdk)
+- 📖 [广联达行业AI平台官方文档](https://glodon-cv-help.yuque.com/cuv0se/ol9231)
 
 ---
 
-## 📚 相关文档
+**Made with ❤️ by Glodon AIoT Team**
 
-- [Coze Studio 入门指南](https://glodon-cv-help.yuque.com/cuv0se/ol9231/coze-studio-intro)
-- [应用开发文档](https://glodon-cv-help.yuque.com/cuv0se/ol9231/app-dev)
-- [API 参考](https://glodon-cv-help.yuque.com/cuv0se/ol9231/api-reference)
-- [NPM 包页面](https://www.npmjs.com/package/@glodon-aiot/chat-app-sdk)
 
 ---
 
-## 📞 支持
-
-- **技术问题**: 提交工单到广联达行业 AI 平台
-- **文档问题**: 联系产品团队
-- **紧急问题**: 联系技术支持热线
-
----
-
-_本文档由 glodon-ai-help 技能自动生成，最后更新：2026-03-20 18:03_
+_本文档由 glodon-ai-help 技能自动生成，内容来自 NPM 包 README，最后更新：2026-03-23 11:32_
