@@ -162,44 +162,40 @@ description: 广联达行业 AI 平台使用问题解答。平台问题必须完
 glodon-ai-help/
 ├── SKILL.md                    # 技能说明（本文件）
 ├── config.yaml                 # 技能配置
-├── knowledge/                  # 知识库（59 篇文档）
-│   ├── INDEX.md                # 📚 主索引（所有文档链接）
-│   ├── STRUCTURE.md            # 目录结构说明
-│   ├── docs_index.json         # JSON 索引
-│   ├── README.md               # 使用说明
-│   │
-│   ├── 01-platform-intro/      # 平台介绍（2 篇）
-│   ├── 02-api-reference/       # API 参考（29 篇）
-│   ├── 03-coze-studio/         # Coze Studio（3 篇）
-│   │   └── sdk/
-│   │       ├── chat_app_sdk.md     # ✅ 新版 SDK（推荐）
-│   │       └── bot_client_ui.md    # ⚠️ 旧版 SDK（废弃）
-│   ├── 04-knowledge-base/      # 知识库 RAG（4 篇）
-│   ├── 05-models/              # 模型服务（3 篇）
-│   ├── 06-prompt-engineering/  # Prompt 工程（3 篇）
-│   ├── 07-evaluation/          # 评估中心（4 篇）
-│   ├── 08-integration/         # 应用集成（3 篇）
-│   └── 09-faq/                 # 常见问题（2 篇）
+├── knowledge/                  # 知识库（目录结构，文档按需生成）
+│   ├── 01-platform-intro/      # 平台介绍
+│   ├── 02-api-reference/       # API 参考
+│   ├── 03-coze-studio/         # Coze Studio
+│   │   └── sdk/                # SDK 文档（由 learn_chat_app_sdk.py 生成）
+│   ├── 04-knowledge-base/      # 知识库 RAG
+│   ├── 05-models/              # 模型服务
+│   ├── 06-prompt-engineering/  # Prompt 工程
+│   ├── 07-evaluation/          # 评估中心
+│   ├── 08-integration/         # 应用集成
+│   └── 09-faq/                 # 常见问题
 │
 ├── scripts/                    # 学习脚本
-│   ├── create_index.py         # 生成索引（无需 Token）
-│   ├── learn_yuque.py          # 完整学习（需要 Cookie）
-│   ├── learn_docs.py           # 深度学习（需要 Token）
-│   ├── learn_chat_app_sdk.py   # SDK 文档同步
-│   ├── learn_bot_client_ui.py  # 旧版 SDK 同步
-│   ├── learn_simple.py         # 简单学习
-│   ├── demo_learn.py           # 演示学习
-│   ├── sync_all_docs.py        # 同步所有文档
-│   ├── sync_yuque.py           # 语雀同步
+│   ├── create_index.py         # 生成索引（无需 Token）⭐
+│   ├── learn_public_docs.py    # 学习公开文档（无需认证）
+│   ├── learn_simple.py         # 简单学习（curl 获取）
+│   ├── learn_chat_app_sdk.py   # SDK 文档同步（NPM）
+│   ├── learn_bot_client_ui.py  # 旧版 SDK 同步（NPM）
+│   ├── demo_learn.py           # 演示学习（离线）
 │   ├── batch_learn.sh          # 批量学习
+│   ├── quick_learn.py          # 快速学习
 │   └── test_new_features.py    # 测试脚本
 │
 ├── intents.json                # 意图识别配置
 └── embeddings/                 # 文档向量索引（待生成）
 ```
 
-📚 **文档索引**: 查看 [knowledge/INDEX.md](knowledge/INDEX.md) 浏览所有 59 篇文档
-📋 **结构说明**: 查看 [knowledge/STRUCTURE.md](knowledge/STRUCTURE.md) 了解分类规则
+**注意**: `knowledge/` 目录初始为空，运行脚本后自动生成文档：
+- `create_index.py` → 生成 `INDEX.md`, `docs_index.json`, `README.md`
+- `learn_public_docs.py` / `batch_learn.sh` → 下载语雀公开文档
+- `learn_chat_app_sdk.py` → 生成 SDK 集成文档
+
+📚 **文档索引**: 运行 `python3 scripts/create_index.py` 生成索引
+📋 **结构说明**: 目录结构对应平台 4 层 11 模块架构
 
 ---
 
@@ -292,24 +288,11 @@ glodon-ai-help/
 
 | 用途                    | 来源       | 说明                                                                      |
 | ----------------------- | ---------- | ------------------------------------------------------------------------- |
-| **平台功能介绍**        | 语雀知识库 | URL: https://glodon-cv-help.yuque.com/cuv0se/ol9231 → 同步到 `knowledge/` |
+| **平台功能介绍**        | 语雀知识库 | URL: https://glodon-cv-help.yuque.com/cuv0se/ol9231 → 公开文档，无需认证 |
 | **@glodon-aiot npm 包** | NPM 网站   | 回答时**动态读取** https://www.npmjs.com/package/@glodon-aiot/包名        |
 
-语雀文档更新频率：每周同步一次（或自动触发）
+语雀文档更新：使用 `learn_public_docs.py` 或 `batch_learn.sh` 同步公开文档
 NPM 包文档：实时获取，保证版本、API 等信息最新
-
-### 环境变量
-
-```bash
-# 语雀 API Token（用于获取文档内容）
-export YUQUE_TOKEN='your_yuque_token'
-```
-
-### 获取语雀 Token
-
-1. 访问 https://www.yuque.com/settings/tokens
-2. 点击"生成新 Token"
-3. 复制 Token 并设置到环境变量
 
 ### 文档同步
 
@@ -321,39 +304,34 @@ python3 scripts/create_index.py
 
 **无需 Cookie，无需 Token**，5 秒钟生成 59 篇文档的完整索引，点击链接直接查看。
 
-#### 方式 2：简单学习
+#### 方式 2：学习公开文档
 
 ```bash
+# 学习核心文档
+python3 scripts/learn_public_docs.py
+
+# 或快速学习
 python3 scripts/learn_simple.py
+
+# 批量学习
+bash scripts/batch_learn.sh
 ```
 
-获取文档元数据和链接，适合快速建立索引。
+使用 `curl` 直接获取语雀公开文档内容，**无需认证**。
 
-#### 方式 3：完整学习（需要 Cookie）
+#### 方式 3：同步 SDK 文档（NPM）
 
 ```bash
-# 配置 Cookie（首次使用）
-cp scripts/.yuque_config.example .yuque_config
-vim .yuque_config  # 填入 Cookie 和 CSRF Token
+# 新版 SDK
+python3 scripts/learn_chat_app_sdk.py
 
-# 学习全部文档
-python3 scripts/learn_yuque.py
-
-# 测试配置
-python3 scripts/learn_yuque.py --catalog
+# 旧版 SDK
+python3 scripts/learn_bot_client_ui.py
 ```
 
-从语雀 API 获取完整文档内容。
+从 NPM Registry 实时获取 SDK 文档，**无需语雀认证**。
 
-#### 方式 4：深度学习（需要 Token）
-
-```bash
-python3 scripts/learn_docs.py --all --depth 2
-```
-
-使用语雀官方 API，支持递归下钻关联链接。
-
-#### 方式 5：演示学习（离线）
+#### 方式 4：演示学习（离线）
 
 ```bash
 python3 scripts/demo_learn.py
@@ -473,30 +451,46 @@ print(response)
 
 ### 文档索引
 
-- 总文档数：59 篇 + 外部文档
-- 分类目录：11 个
-- 核心架构文档：[PLATFORM_ARCHITECTURE.md](knowledge/PLATFORM_ARCHITECTURE.md)
-- **外部学习源**：
-  - `chat_app_sdk.md` - Coze Studio 前端 SDK 集成文档（新版推荐）
-  - `bot_client_ui.md` - Bot Client UI 前端 SDK 文档（旧版已废弃，含迁移指南）
+- **总文档数**: 59 篇（语雀公开文档）+ 外部文档（NPM SDK）
+- **分类目录**: 11 个
+- **文档生成**: 运行脚本后自动生成到 `knowledge/` 目录
+  - `python3 scripts/create_index.py` → 生成索引文件
+  - `bash scripts/batch_learn.sh` → 下载核心文档
+  - `python3 scripts/learn_chat_app_sdk.py` → 生成 SDK 文档
+- **外部学习源**:
+  - 语雀知识库：https://glodon-cv-help.yuque.com/cuv0se/ol9231
+  - NPM SDK：https://www.npmjs.com/package/@glodon-aiot/chat-app-sdk
 
 ---
 
 ## ⚙️ 环境变量
 
 ```bash
-# 语雀配置
-YUQUE_TOKEN=your_yuque_token
-YUQUE_BASE_URL=https://glodon-cv-help.yuque.com/api/v2
-
-# 平台配置
-AI_PLATFORM_URL=https://ai.glodon.com
-AI_PLATFORM_API_KEY=your_api_key
+# 平台配置（可选）
+AI_PLATFORM_URL=https://copilot.glodon.com
 ```
+
+**注意**：本技能仅访问语雀公开文档和 NPM 公开包，**无需任何 Token 或认证**。
 
 ---
 
 ## 🔄 更新日志
+
+- **v1.5.1** (2026-03-23): 清空知识库 - 按需生成 🧹
+  - **删除** `knowledge/` 目录下所有脚本生成的文件（124 个）
+  - **保留** 11 个分类目录结构
+  - 更新 SKILL.md 文件结构说明
+  - 文档现在按需运行脚本生成
+
+- **v1.5.0** (2026-03-23): 简化认证 - 仅使用公开文档 🎯
+  - **删除** `learn_yuque.py`（需要 Cookie）
+  - **删除** `learn_docs.py`（需要 Token）
+  - **删除** `sync_yuque.py`（需要 Token）
+  - **删除** `sync_all_docs.py`（需要 Token）
+  - **保留** `learn_public_docs.py`、`learn_simple.py`、`batch_learn.sh`（无需认证）
+  - 更新 SKILL.md 文档同步说明
+  - 移除环境变量中的 Token 配置
+  - 技能现在仅访问语雀公开文档和 NPM 公开包
 
 - **v1.4.2** (2026-03-23): 严格约束 - 禁止添加文档外内容 ⭐
   - **平台使用问题** → 必须完全依照语雀文档，不得添加文档中没有的内容
