@@ -1,0 +1,8 @@
+# 语雀配置
+# 复制此文件为 .yuque_config 并填入真实值
+
+# Cookie（从浏览器获取）
+cookie=
+
+# CSRF Token（从浏览器获取）
+csrf=

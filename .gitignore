@@ -1,0 +1,36 @@
+# 敏感配置（含 Cookie、Token，切勿提交）
+.yuque_config
+.env
+.env.*
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# 自动生成/学习状态
+.learn_state.json
+knowledge/.learn_state.json
+
+# IDE / 系统
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# 日志
+*.log
+logs/
+
+# 虚拟环境
+venv/
+.venv/
+env/

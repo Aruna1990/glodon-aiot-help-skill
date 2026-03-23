@@ -1,0 +1,111 @@
+# 广联达行业 AI 平台帮助技能配置
+
+skill:
+  name: glodon-ai-help
+  version: 1.4.0
+  description: 广联达行业 AI 平台使用问题解答
+
+# 文档来源
+documentation:
+  source: yuque
+  base_url: https://glodon-cv-help.yuque.com/cuv0se/ol9231
+  space: cuv0se
+  book: ol9231
+  sync_interval: 7d  # 每周同步一次
+
+# 知识库配置
+knowledge_base:
+  directory: knowledge/
+  embedding_model: text-embedding-ada-002
+  chunk_size: 500
+  chunk_overlap: 50
+  index_type: faiss
+
+# 文档查询优先级配置（新增）
+# 当用户问题匹配关键词时，自动优先查询指定文档
+doc_query_priority:
+  - keywords: ["token", "认证", "api key", "api secret", "access token", "resource token", "接口 url", "api 接口"]
+    priority_docs:
+      - knowledge/02-api-reference/
+      - knowledge/AI_APP_INTEGRATION_GUIDE.md
+    rule: "涉及认证和 API 接口时必须先查这两个文档"
+  
+  - keywords: ["sdk", "前端", "集成", "chat-app-sdk", "bot-client-ui", "嵌入", "cdn", "npm"]
+    priority_docs:
+      - knowledge/03-coze-studio/sdk/chat_app_sdk.md
+      - knowledge/03-coze-studio/sdk/bot_client_ui.md
+    rule: "前端集成问题优先查 SDK 文档"
+  
+  - keywords: ["架构", "模块", "平台结构", "层次"]
+    priority_docs:
+      - knowledge/PLATFORM_ARCHITECTURE.md
+    rule: "架构问题查平台架构文档"
+  
+  - keywords: ["工作流", "workflow", "appId", "应用 id", "发布"]
+    priority_docs:
+      - knowledge/02-api-reference/
+      - knowledge/AI_APP_INTEGRATION_GUIDE.md
+    rule: "工作流和应用配置查集成指南"
+
+# 自动学习配置（新增）
+learning:
+  enabled: true
+  auto_trigger: true      # 检测知识盲区时自动学习
+  max_depth: 2            # 关联链接下钻深度
+  rate_limit: 0.5         # 请求间隔（秒）
+  state_file: .learn_state.json
+  core_docs:              # 核心文档（优先学习）
+    - yck25gn683z3wa2f    # 平台介绍
+    - lpetkzefs5er4q5x    # 常见问题
+    - etgvtorzglntmv39    # API 调用
+    - ku9i5oea97ynfzt4    # Token 说明
+  external_sources:       # 外部学习源
+    - name: chat-app-sdk
+      trigger_keywords: ["coze studio sdk", "前端集成", "chat-app-sdk", "@glodon-aiot/chat-app-sdk", "新版 sdk"]
+      script: scripts/learn_chat_app_sdk.py
+      description: "Coze Studio 前端聊天应用 SDK（新版推荐）"
+    - name: bot-client-ui
+      trigger_keywords: ["bot-client-ui", "@glodon-aiot/bot-client-ui", "旧版 sdk", "应用对接", "历史项目"]
+      script: scripts/learn_bot_client_ui.py
+      description: "Bot Client UI 前端 SDK（旧版已废弃）"
+
+# 机器人配置
+bot:
+  name: AI 平台小助手
+  avatar: /avatars/ai-platform-bot.png
+  welcome_message: |
+    你好！我是广联达行业 AI 平台的客服助手 👋
+    
+    我可以帮你：
+    • 解答平台使用问题
+    • 提供 API 调用指导
+    • 帮助故障排查
+    • 查找相关文档
+    
+    有什么可以帮你的吗？
+
+# 意图识别
+intents:
+  enabled: true
+  model: intent-classifier-v1
+  confidence_threshold: 0.7
+
+# 转人工配置
+handoff:
+  enabled: true
+  trigger_keywords:
+    - 转人工
+    - 人工客服
+    - 技术支持
+    - 投诉建议
+  target: ai_platform_support_queue
+
+# 监控
+monitoring:
+  log_conversations: true
+  track_metrics: true
+  alert_on_error: true
+  metrics:
+    - response_time
+    - resolution_rate
+    - user_satisfaction
