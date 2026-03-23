@@ -5,7 +5,7 @@ description: 广联达行业 AI 平台使用问题解答。平台问题必须完
 
 # 广联达行业 AI 平台帮助技能
 
-> **版本**: 1.6.1 | **知识策略**: 按需学习 | **双源回答**: 语雀 + NPM
+> **版本**: 1.7.0 | **知识策略**: 按需学习 | **三源回答**: 行业 AI 平台 + AIoT 平台 + NPM
 
 ---
 
@@ -15,13 +15,15 @@ description: 广联达行业 AI 平台使用问题解答。平台问题必须完
 
 | 问题类型 | 数据来源 | 查阅方式 |
 |----------|----------|----------|
-| **平台功能/架构/API/Token** | 语雀知识库 | 读取 `knowledge/` 下对应文档 |
+| **平台功能/架构/API/Token** | 行业 AI 平台语雀知识库 | 读取 `knowledge/` 下对应文档 |
+| **身份认证/Token 获取（通用）** | AIoT 平台对接文档 | 读取 `knowledge/02-aiot-platform/` 下文档 |
 | **@glodon-aiot npm 包** | NPM 网站 README | 访问 https://www.npmjs.com/package/@glodon-aiot/包名 |
 
 **严格约束**：
 - ❌ 不得添加语雀文档中没有的平台功能说明
 - ❌ 不得添加 NPM README 中没有的包 API/用法
 - ❌ 不得凭记忆回答技术细节（URL、参数名、Token 流程等）
+- ✅ **身份认证、Token 获取等问题优先参考 AIoT 平台对接文档**
 
 ### 知识策略：按需学习 🧠
 
@@ -53,24 +55,32 @@ glodon-ai-help/
 ├── SKILL.md                    # 技能说明（本文件）
 ├── config.yaml                 # 技能配置
 │
-├── knowledge/                  # 知识库（按需生成）
+├── knowledge/                  # 知识库（技能自己的数据，已 git ignore）⭐
 │   ├── README.md               # 知识库说明
 │   ├── .learn_state.json       # 学习状态
-│   ├── <slug>/                 # 语雀文档目录（按实际结构创建）
+│   ├── 02-aiot-platform/       # AIoT 平台对接文档
+│   │   ├── README.md           # 文档索引
 │   │   └── <slug>.md
+│   ├── <slug>.md               # 行业 AI 平台文档（按实际结构创建）
 │   └── 03-coze-studio/sdk/     # SDK 文档（固定结构）
 │
 ├── scripts/                    # 学习脚本
 │   ├── check_and_learn.py      # 统一入口：检查 + 按需学习 ⭐
-│   ├── learn_public_docs.py    # 语雀公开文档（自动提取目录）
+│   ├── config.py               # 统一配置管理
+│   ├── utils.py                # 通用工具函数
+│   ├── learn_public_docs.py    # 行业 AI 平台公开文档
+│   ├── learn_aiot_docs.py      # AIoT 平台对接文档
 │   ├── learn_chat_app_sdk.py   # NPM SDK 文档
 │   └── learn_bot_client_ui.py  # 旧版 SDK 文档
 │
+├── .gitignore                  # Git 忽略配置（忽略 knowledge/）
 └── intents.json                # 意图识别
 ```
 
 **注意**：
-- `knowledge/` 初始为空，运行 `check_and_learn.py` 后自动生成文档
+- `knowledge/` 是技能自己的数据，位于技能目录内
+- `.gitignore` 已配置忽略 `knowledge/`，不会提交到 Git 仓库
+- 运行 `check_and_learn.py` 后自动生成文档
 - 语雀文档目录**根据实际文档结构自动创建**，不预设固定分类
 
 ---
@@ -111,12 +121,33 @@ python3 scripts/check_and_learn.py --state
 
 ## 📌 文档来源
 
-### 语雀知识库
+### 行业 AI 平台（语雀）
 
 - **URL**: https://glodon-cv-help.yuque.com/cuv0se/ol9231
 - **认证**: 公开文档，无需 Token
 - **学习脚本**: `learn_public_docs.py`
 - **目录结构**: 根据语雀实际文档结构自动创建
+
+### AIoT 平台对接（语雀）⭐
+
+- **URL**: https://glodon-cv-help.yuque.com/lzh2bp/gwam63
+- **Book ID**: `29345082`
+- **认证**: **部分公开，部分需要登录**
+- **学习脚本**: `learn_aiot_docs.py`
+- **核心文档**:
+  - ✅ [Glodon AIoT 产品系统 API 接入文档](https://glodon-cv-help.yuque.com/lzh2bp/gwam63/tt25tc) - 已缓存
+  - 🔒 [身份认证](https://glodon-cv-help.yuque.com/lzh2bp/gwam63/kqg83f) - 需登录
+  - 🔒 [获取 Access Token](https://glodon-cv-help.yuque.com/lzh2bp/gwam63/pzx9r2) - 需登录
+  - 🔒 [API 调用规范](https://glodon-cv-help.yuque.com/lzh2bp/gwam63/m7h4n1) - 需登录
+- **索引文件**: `knowledge/02-aiot-platform/README.md`
+- **本地缓存**: `knowledge/02-aiot-platform/tt25tc.md`
+
+**使用场景**：身份认证、Token 获取、API 调用规范等通用问题优先参考 AIoT 平台对接文档。
+
+**关键信息**（来自 `tt25tc`）:
+- **API Access Token 接口**: `POST https://copilot.glodon.com/api/auth/v1/access-token`
+- **有效期**: 7 天（剩余 12 小时内刷新可获取新 Token）
+- **鉴权方式**: API Key + API Secret + MD5 签名
 
 ### NPM 包
 

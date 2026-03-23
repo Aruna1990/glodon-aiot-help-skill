@@ -1,52 +1,131 @@
 #!/usr/bin/env python3
 """
-语雀公开文档学习脚本
-使用 curl 直接获取公开文档内容（无需 Token）
+语雀公开文档学习脚本（行业 AI 平台）
+支持两种方式获取文档内容：
+1. 语雀 API（优先）- 获取完整 HTML 内容，转换为 Markdown
+2. 网页抓取（降级）- 仅获取元数据
 
 根据语雀文档实际目录结构自动创建本地目录
 """
 
 import os
+import sys
 import subprocess
 import json
 import re
 import time
 from datetime import datetime
 from typing import List, Dict, Optional
+from pathlib import Path
 
-# 配置
-BASE_URL = "https://glodon-cv-help.yuque.com/cuv0se/ol9231"
-SKILL_DIR = os.path.join(os.path.dirname(__file__), "..")
-KNOWLEDGE_DIR = os.path.join(SKILL_DIR, "knowledge")
-LEARN_STATE_FILE = os.path.join(KNOWLEDGE_DIR, ".learn_state.json")
+# 导入统一配置和工具
+sys.path.insert(0, str(Path(__file__).parent))
+from config import IndustryAIPlatform as Config, Common
+from utils import html_to_markdown, ensure_dir
 
-# 核心文档（不再预设分类，由脚本自动提取）
-CORE_DOCS = [
-    {"slug": "yck25gn683z3wa2f", "title": "平台介绍"},
-    {"slug": "lpetkzefs5er4q5x", "title": "平台使用常见问题汇总"},
-    {"slug": "ku9i5oea97ynfzt4", "title": "平台认证 Token 说明文档"},
-    {"slug": "tl0hylbi1hm61mu3", "title": "Key Secret 认证获取 Token"},
-    {"slug": "etgvtorzglntmv39", "title": "API 调用"},
-    {"slug": "thkdpzvfc9lffg7g", "title": "执行对话接口说明文档"},
-    {"slug": "ku8iulvfl3e9sghk", "title": "服务 API 调用"},
-    {"slug": "xcrcis1brhczo6ei", "title": "Prompt 工程"},
-    {"slug": "cw6wurwnygkv1nne", "title": "知识库"},
-    {"slug": "hhgfdznfypkcz0t1", "title": "数据管理"},
-]
+# 使用配置
+BASE_URL = Config.BASE_URL
+API_BASE = Config.API_BASE
+BOOK_ID = Config.BOOK_ID
+CORE_DOCS = Config.CORE_DOCS
+KNOWLEDGE_DIR = Config.OUTPUT_DIR
+LEARN_STATE_FILE = Common.STATE_FILE
+USER_AGENT = Common.USER_AGENT
+REQUEST_TIMEOUT = Common.REQUEST_TIMEOUT
 
 
-def fetch_yuque_toc() -> List[Dict]:
+def html_to_markdown(html_content: str) -> str:
     """
-    获取语雀知识库目录结构
+    将语雀 Lake HTML 转换为 Markdown
     
-    语雀知识库目录页通常包含所有文档的层级结构
-    通过解析目录页可以获取文档的分类信息
+    使用 markdownify 库进行转换，并做特殊处理：
+    - 移除 meta 标签
+    - 处理表格
+    - 处理代码块
+    - 处理图片
     """
-    toc_url = BASE_URL
+    try:
+        from markdownify import markdownify as md
+        
+        # 移除 doctype 和 meta 标签
+        clean_html = re.sub(r'<!doctype[^>]*>', '', html_content)
+        clean_html = re.sub(r'<meta[^>]*>', '', clean_html)
+        
+        # 移除 card 标签（语雀的特殊组件，如图片、代码块等）
+        # 保留 card 中的文本内容
+        card_pattern = r'<card[^>]*value="data:([^"]*)"[^>]*></card>'
+        def replace_card(match):
+            import base64
+            import urllib.parse
+            try:
+                data_str = match.group(1)
+                decoded = urllib.parse.unquote(data_str)
+                # 尝试解析 JSON
+                card_data = json.loads(decoded[5:] if decoded.startswith('data:') else decoded)
+                
+                # 处理代码块
+                if card_data.get('name') == 'codeblock':
+                    code = card_data.get('code', '')
+                    lang = card_data.get('mode', '')
+                    return f"\n```{lang}\n{code}\n```\n"
+                
+                # 处理图片
+                elif card_data.get('name') == 'image':
+                    src = card_data.get('src', '')
+                    return f"\n![image]({src})\n"
+                
+                # 处理书签
+                elif card_data.get('name') == 'bookmarkInline':
+                    detail = card_data.get('detail', {})
+                    title = detail.get('title', '')
+                    url = detail.get('url', '')
+                    return f"\n[{title}]({url})\n"
+                
+                # 处理内联链接
+                elif card_data.get('name') == 'yuqueinline':
+                    detail = card_data.get('detail', {})
+                    title = detail.get('title', '')
+                    url = detail.get('url', '')
+                    return f"\n[{title}]({url})\n"
+                
+                else:
+                    return ""
+            except:
+                return ""
+        
+        clean_html = re.sub(card_pattern, replace_card, clean_html)
+        
+        # 转换 HTML 到 Markdown
+        markdown = md(
+            clean_html,
+            heading_style='ATX',
+            strip=['script', 'style'],
+            bullets='-'
+        )
+        
+        # 清理多余的空白行
+        markdown = re.sub(r'\n{3,}', '\n\n', markdown)
+        
+        return markdown
+    
+    except ImportError:
+        # 如果 markdownify 不可用，返回简化版
+        return html_content
+
+
+def fetch_doc_via_api(slug: str) -> Optional[Dict]:
+    """
+    通过语雀 API 获取文档内容（优先方式）
+    
+    API: https://glodon-cv-help.yuque.com/api/docs/${slug}?include_contributors=true&include_like=true&include_hits=true&merge_dynamic_data=false&book_id=41611578
+    
+    返回 data.content 字段包含文档的 HTML 内容
+    """
+    api_url = f"{API_BASE}/docs/{slug}?include_contributors=true&include_like=true&include_hits=true&merge_dynamic_data=false&book_id={BOOK_ID}"
     
     try:
         result = subprocess.run(
-            ['curl', '-s', '-L', '-A', 'Mozilla/5.0', toc_url],
+            ['curl', '-s', '-L', '-A', 'Mozilla/5.0', api_url],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
@@ -54,31 +133,53 @@ def fetch_yuque_toc() -> List[Dict]:
         )
         
         if result.returncode == 0:
-            html = result.stdout
-            # 提取目录结构（语雀的目录通常在特定的 div 中）
-            # 这里简单提取所有文档链接和标题
-            pattern = r'href="/cuv0se/ol9231/([a-z0-9]+)"[^>]*>([^<]+)<'
-            matches = re.findall(pattern, html)
+            data = json.loads(result.stdout)
             
-            toc = []
-            for slug, title in matches:
-                # 去重
-                if not any(doc['slug'] == slug for doc in toc):
-                    toc.append({"slug": slug, "title": title.strip()})
+            # 检查是否有 data.content 字段
+            if 'data' in data and 'content' in data['data']:
+                html_content = data['data']['content']
+                title = data['data'].get('title', slug)
+                description = data['data'].get('description', '')
+                
+                # 转换 HTML 到 Markdown
+                markdown_content = html_to_markdown(html_content)
+                
+                # 构建完整文档
+                content = f"# {title}\n\n"
+                if description:
+                    # 清理描述中的 HTML 标签
+                    desc_clean = re.sub(r'<[^>]+>', '', description)
+                    content += f"{desc_clean}\n\n"
+                
+                content += f"---\n\n{markdown_content}\n\n"
+                content += f"---\n\n"
+                content += f"## 文档信息\n\n"
+                content += f"- **Slug**: `{slug}`\n"
+                content += f"- **URL**: {BASE_URL}/{slug}\n"
+                content += f"- **获取时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                content += f"- **来源**: 语雀 API（HTML 转 Markdown）\n"
+                
+                return {
+                    "title": title,
+                    "content": content,
+                    "category": None,
+                    "url": f"{BASE_URL}/{slug}",
+                    "source": "api"
+                }
             
-            return toc
+            return None
         
-        return []
+        return None
         
     except Exception as e:
-        print(f"获取目录失败：{e}")
-        return []
+        print(f"    API 获取失败：{e}")
+        return None
 
 
-def fetch_doc_content(slug: str) -> Optional[Dict]:
+def fetch_doc_via_web(slug: str) -> Optional[Dict]:
     """
-    使用 curl 获取文档内容
-    返回包含内容、标题、分类信息的字典
+    通过网页抓取获取文档内容（降级方式）
+    仅获取元数据摘要
     """
     url = f"{BASE_URL}/{slug}"
     
@@ -98,28 +199,14 @@ def fetch_doc_content(slug: str) -> Optional[Dict]:
             title_match = re.search(r'<title>([^<]+)</title>', html)
             page_title = title_match.group(1).strip() if title_match else slug
             
-            # 清理标题（移除"· 行业 AI 平台文档中心"等后缀）
             if "·" in page_title:
                 page_title = page_title.split("·")[0].strip()
             
-            # 提取描述/摘要
+            # 提取描述
             desc_match = re.search(r'<meta[^>]+name="description"[^>]+content="([^"]+)"', html)
             description = desc_match.group(1) if desc_match else ""
             
-            # 尝试提取面包屑导航（确定分类）
-            # 语雀的面包屑通常形如：知识库 > 分类名 > 文档名
-            breadcrumb_match = re.search(r'breadcrumb[^>]*>(.*?)</', html, re.IGNORECASE)
-            category = None
-            if breadcrumb_match:
-                breadcrumb = breadcrumb_match.group(1)
-                # 提取分类（中间的部分）
-                parts = re.split(r'[>\/]', breadcrumb)
-                if len(parts) >= 2:
-                    category = parts[-2].strip()
-                    # 清理分类名
-                    category = re.sub(r'[^\w\u4e00-\u9fff-]', '', category)
-            
-            # 提取正文内容（简化版：提取第一个主要段落）
+            # 构建元数据文档
             content = f"# {page_title}\n\n"
             if description:
                 content += f"{description}\n\n"
@@ -142,50 +229,37 @@ def fetch_doc_content(slug: str) -> Optional[Dict]:
 - **Slug**: `{slug}`
 - **URL**: {url}
 - **获取时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **来源**: 网页抓取（元数据）
+
+---
+
+*本文档由 learn_public_docs.py 自动生成*
 """
-            
-            if category:
-                content += f"- **分类**: {category}\n"
-            
-            content += "\n---\n\n*本文档由 learn_public_docs.py 自动生成*\n"
             
             return {
                 "title": page_title,
                 "content": content,
-                "category": category,
-                "url": url
+                "category": None,
+                "url": url,
+                "source": "web"
             }
         
         return None
         
     except Exception as e:
-        print(f"错误：{e}")
+        print(f"    网页抓取失败：{e}")
         return None
 
 
 def save_doc(slug: str, title: str, content: str, category: str = None):
-    """保存文档到本地，根据分类自动创建目录"""
-    # 确定保存目录
-    if category:
-        # 创建分类目录（使用 slug 作为目录名，避免中文路径问题）
-        save_dir = os.path.join(KNOWLEDGE_DIR, slug)
-    else:
-        save_dir = KNOWLEDGE_DIR
-    
-    os.makedirs(save_dir, exist_ok=True)
-    filepath = os.path.join(save_dir, f"{slug}.md")
+    """保存文档到本地"""
+    os.makedirs(KNOWLEDGE_DIR, exist_ok=True)
+    filepath = os.path.join(KNOWLEDGE_DIR, f"{slug}.md")
     
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(content)
     
     return filepath
-
-
-def extract_links(content: str) -> List[str]:
-    """提取文档中的语雀链接"""
-    pattern = r'/cuv0se/ol9231/([a-z0-9]+)'
-    matches = re.findall(pattern, content)
-    return list(set(matches))
 
 
 def learn_core_docs():
@@ -201,7 +275,8 @@ def learn_core_docs():
     
     learned = 0
     failed = 0
-    categories = set()
+    api_count = 0
+    web_count = 0
     
     for i, doc in enumerate(CORE_DOCS, 1):
         slug = doc["slug"]
@@ -210,18 +285,24 @@ def learn_core_docs():
         print(f"[{i}/{len(CORE_DOCS)}] 📥 {title}")
         print(f"    {BASE_URL}/{slug}")
         
-        # 获取内容（包含分类信息）
-        doc_data = fetch_doc_content(slug)
+        # 优先尝试 API 方式
+        doc_data = fetch_doc_via_api(slug)
+        
+        # API 失败则降级到网页抓取
+        if not doc_data:
+            print(f"    ⚠️ API 不可用，降级到网页抓取...")
+            doc_data = fetch_doc_via_web(slug)
         
         if doc_data:
-            # 保存文档（自动根据分类创建目录）
-            category = doc_data.get("category")
-            if category:
-                categories.add(category)
-                print(f"    分类：{category}")
+            source = doc_data.get("source", "unknown")
+            if source == "api":
+                api_count += 1
+                print(f"    ✓ API 获取成功 (HTML 转 Markdown)")
+            else:
+                web_count += 1
+                print(f"    ✓ 网页抓取成功 (元数据)")
             
-            filepath = save_doc(slug, doc_data["title"], doc_data["content"], category)
-            
+            filepath = save_doc(slug, doc_data["title"], doc_data["content"])
             print(f"    ✓ 已保存：{filepath}")
             learned += 1
         else:
@@ -236,8 +317,8 @@ def learn_core_docs():
     print("=" * 60)
     print(f"成功：{learned} 篇")
     print(f"失败：{failed} 篇")
-    if categories:
-        print(f"分类：{', '.join(categories)}")
+    print(f"API 获取：{api_count} 篇")
+    print(f"网页抓取：{web_count} 篇")
     print("=" * 60)
     
     # 保存状态
@@ -245,7 +326,8 @@ def learn_core_docs():
         "last_sync": datetime.now().isoformat(),
         "learned_docs": [doc["slug"] for doc in CORE_DOCS],
         "total_learned": learned,
-        "categories": list(categories)
+        "api_count": api_count,
+        "web_count": web_count
     }
     
     with open(LEARN_STATE_FILE, 'w', encoding='utf-8') as f:
@@ -270,21 +352,12 @@ def main():
     
     parser = argparse.ArgumentParser(description="语雀公开文档学习工具")
     parser.add_argument("--core", action="store_true", help="学习核心文档")
-    parser.add_argument("--toc", action="store_true", help="获取目录结构")
     parser.add_argument("--state", action="store_true", help="查看状态")
     
     args = parser.parse_args()
     
     if args.state:
         show_state()
-    elif args.toc:
-        print("📑 获取语雀知识库目录...")
-        toc = fetch_yuque_toc()
-        print(f"找到 {len(toc)} 篇文档:")
-        for doc in toc[:20]:  # 只显示前 20 篇
-            print(f"  - {doc['title']} ({doc['slug']})")
-        if len(toc) > 20:
-            print(f"  ... 还有 {len(toc) - 20} 篇")
     elif args.core:
         learn_core_docs()
     else:

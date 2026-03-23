@@ -23,6 +23,7 @@ from typing import Dict, List, Optional
 
 # 技能根目录（scripts/ 的父目录）
 SKILL_DIR = Path(__file__).resolve().parent.parent
+# 知识库目录（技能目录内）
 KNOWLEDGE_DIR = SKILL_DIR / "knowledge"
 STATE_FILE = KNOWLEDGE_DIR / ".learn_state.json"
 
@@ -103,26 +104,41 @@ def learn_sdk_docs() -> bool:
     return success1 and success2
 
 
+def learn_aiot_docs() -> bool:
+    """学习 AIoT 平台对接文档"""
+    print("\n🔗 正在学习 AIoT 平台对接文档...")
+    return run_learn_script("learn_aiot_docs.py", ["--learn"])
+
+
 def learn_all() -> bool:
     """学习所有文档"""
     print("=" * 60)
     print("🎯 开始学习广联达行业 AI 平台文档")
     print("=" * 60)
     
-    # 学习语雀文档
+    # 学习语雀文档（行业 AI 平台）
     success1 = learn_core_docs()
     
+    # 学习 AIoT 平台对接文档
+    success2 = learn_aiot_docs()
+    
     # 学习 SDK 文档
-    success2 = learn_sdk_docs()
+    success3 = learn_sdk_docs()
     
     print("\n" + "=" * 60)
-    if success1 and success2:
+    if success1 and success2 and success3:
         print("✅ 学习完成！")
     else:
         print("⚠️  部分学习失败")
+        if not success1:
+            print("   - 行业 AI 平台文档失败")
+        if not success2:
+            print("   - AIoT 平台对接文档失败")
+        if not success3:
+            print("   - SDK 文档失败")
     print("=" * 60)
     
-    return success1 and success2
+    return success1 and success2 and success3
 
 
 def show_state():
@@ -173,8 +189,10 @@ def main():
     if state["needs_learning"] or args.force:
         print("📚 检测到知识库为空或需要更新")
         
-        if args.topic == "api":
+        if args.topic == "platform":
             learn_core_docs()
+        elif args.topic == "aiot":
+            learn_aiot_docs()
         elif args.topic == "sdk":
             learn_sdk_docs()
         else:
@@ -185,7 +203,7 @@ def main():
         print(f"   最后同步：{state['last_sync']}")
         print("\n💡 提示:")
         print("   --force  强制重新学习")
-        print("   --topic  学习特定主题 (platform|api|sdk|all)")
+        print("   --topic  学习特定主题 (platform|aiot|sdk|all)")
         print("   --state  查看详细状态")
 
 

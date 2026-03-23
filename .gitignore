@@ -15,9 +15,9 @@ __pycache__/
 dist/
 build/
 
-# 自动生成/学习状态
+# 自动生成/学习状态/知识库
 .learn_state.json
-knowledge/.learn_state.json
+knowledge/
 
 # IDE / 系统
 .idea/
