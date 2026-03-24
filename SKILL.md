@@ -1,6 +1,16 @@
 ---
 name: glodon-ai-help
 description: 广联达行业 AI 平台使用问题解答。平台问题必须完全依照语雀文档；@glodon-aiot npm 包必须使用 npm 网站 README 内容。禁止添加文档外的任何内容。
+metadata:
+  {
+    "openclaw":
+      {
+        "emoji": "🏗️",
+        "homepage": "https://glodon-cv-help.yuque.com/cuv0se/ol9231",
+        "requires": { "bins": ["python3"] },
+      },
+  }
+allowed-tools: read exec web_fetch
 ---
 
 # 广联达行业 AI 平台帮助技能
